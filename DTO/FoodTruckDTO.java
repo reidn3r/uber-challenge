@@ -25,4 +25,5 @@ public class FoodTruckDTO implements Serializable {
         this.x = Double.parseDouble(data.getX());
         this.y = Double.parseDouble(data.getY());
     }
+
 }

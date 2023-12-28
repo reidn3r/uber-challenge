@@ -9,8 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ControllerService {
@@ -22,20 +23,19 @@ public class ControllerService {
         if(data.radius() < 0) throw new Exception("Distância inválida");
 
         List<ExternalResponseDTO> foodTrucks = this.apiService.getAllFoodTrucks();
-        List<FoodTruckDTO> results = new ArrayList<>();
-        LocationDTO userLocation = new LocationDTO(data.latitude(), data.longitude());
+        Stream<ExternalResponseDTO> ftStream = foodTrucks.stream();
 
-        for(ExternalResponseDTO truck : foodTrucks) {
-            LocationDTO truckLocation = new LocationDTO(Double.parseDouble(truck.latitude), Double.parseDouble(truck.longitude));
-            double distance = this.CalculateDistanceBetweenLocations(truckLocation, userLocation);
-            if(distance <= data.radius() && truck.status.equalsIgnoreCase("APPROVED")){
-                results.add(new FoodTruckDTO(truck));
-            }
-        }
-        return ResponseEntity.status(HttpStatus.OK).body(results);
+        List<FoodTruckDTO> stream = ftStream.filter(ft -> this.CalculateDistanceBetweenLocationsInMeters(
+                new LocationDTO(Double.parseDouble(ft.latitude), Double.parseDouble(ft.longitude)),
+                new LocationDTO(data.latitude(), data.longitude())) < data.radius())
+                .filter(ft -> ft.status.equalsIgnoreCase("APPROVED") && ft.getX() != null && ft.getY() != null)
+                .map(FoodTruckDTO::new)
+                .collect(Collectors.toList());
+        
+        return ResponseEntity.status(HttpStatus.OK).body(stream);
     }
 
-    private double CalculateDistanceBetweenLocations(LocationDTO loc1, LocationDTO loc2){
+    private double CalculateDistanceBetweenLocationsInMeters(LocationDTO loc1, LocationDTO loc2){
         /*
         * Calcula a distância em metros entre 2 pontos de acordo com
         * a latitude e longitude de cada um
